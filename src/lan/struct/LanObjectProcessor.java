@@ -1,6 +1,12 @@
 package lan.struct;
 
-public interface LanObjectProcessor {
-	Object getRealObject(LanObject object);
-	void setOwner(LanWorld world);
+public abstract class LanObjectProcessor extends LanWorldSubstance {
+	public LanObjectProcessor(LanWorld owner) {
+		super(owner);
+	}
+	
+	public void onObjectCreated(LanObject object) { }
+	public void onObjectRemoved(LanObject object) { }
+	
+	public abstract Object getRealObject(LanObject object);
 }

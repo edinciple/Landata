@@ -1,5 +1,6 @@
 package lan.exceptions;
 
+@SuppressWarnings("serial")
 public class IdNotExistException extends LanException {
 	String id;
 

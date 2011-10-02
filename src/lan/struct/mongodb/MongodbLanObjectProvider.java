@@ -1,8 +1,8 @@
 package lan.struct.mongodb;
 
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 import lan.struct.*;
@@ -18,7 +18,103 @@ import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoException;
 
-public class MongodbLanObjectProvider implements LanObjectProvider {
+public class MongodbLanObjectProvider extends LanObjectProvider {
+	public class InnerObject extends LanInnerObject {
+		MongodbLanObjectProvider provider;
+		String id;
+		
+		public InnerObject(String id, MongodbLanObjectProvider provider) {
+			this.id = id;
+			this.provider = provider;
+		}
+
+		@Override
+		public Set<String> getAttributeKeys() throws IdNotExistException {
+			DBObject dbobj = checkAndGetObject(this.getId());
+			
+			Set<String> keys = dbobj.keySet();
+			keys.remove(IdKey);
+			keys.remove(TypeKey);
+			keys.remove(ProcessorKey);
+			
+			return keys;
+		}
+
+		@Override
+		public LanObject getAttribute(String key) throws IdNotExistException {
+			return this.provider.get(this.provider.getAttribute(this.getId(), key).toString());
+		}
+
+		@Override
+		public void setAttribute(String key, LanObject value) {
+			this.provider.setAttribute(this.getId(), key, new ObjectId(value.getId()));
+		}
+
+		@Override
+		public String getId() {
+			return this.id;
+		}
+
+		@Override
+		public LanObjectProvider getProvider() {
+			return this.provider;
+		}
+
+		@Override
+		public String getProcessorName() throws IdNotExistException {
+			return this.provider.getAttribute(this.getId(), ProcessorKey).toString();
+		}
+
+		@Override
+		public void setProcessorName(String name) {
+			this.provider.setAttribute(this.getId(), ProcessorKey, name);
+			
+		}
+
+	}
+	
+	public class OuterObject extends LanOuterObject {
+		MongodbLanObjectProvider provider;
+		String id;
+		
+		public OuterObject(String id, MongodbLanObjectProvider provider) {
+			this.id = id;
+			this.provider = provider;
+		}
+
+		@Override
+		public String getId() {
+			return this.id;
+		}
+
+		@Override
+		public LanObjectProvider getProvider() {
+			return this.provider;
+		}
+
+		@Override
+		public String getMetadata() throws IdNotExistException {
+			return this.provider.getAttribute(this.getId(), MetadataKey).toString();
+		}
+
+		@Override
+		public void setMetadata(String metadata) {
+			this.provider.setAttribute(this.getId(), MetadataKey, metadata);
+			
+		}
+
+		@Override
+		public String getProcessorName() throws IdNotExistException {
+			return this.provider.getAttribute(this.getId(), ProcessorKey).toString();
+		}
+
+		@Override
+		public void setProcessorName(String name) {
+			this.provider.setAttribute(this.getId(), ProcessorKey, name);
+			
+		}
+		
+	}
 
 	String host;
 	int port;
@@ -45,7 +141,11 @@ public class MongodbLanObjectProvider implements LanObjectProvider {
 		return this.collectionName;
 	}
 
-	public MongodbLanObjectProvider() throws UnknownHostException, MongoException {
+	public MongodbLanObjectProvider(LanWorld owner) throws UnknownHostException, MongoException {
+		super(owner);
+		
+		this.storedObjects = new HashMap<String, LanObject>();
+		
 		this.host = "127.0.0.1";
 		this.port = 27017;
 		this.dbName = "landata";
@@ -76,46 +176,24 @@ public class MongodbLanObjectProvider implements LanObjectProvider {
 	final String InnerTypeValue = "inner";
 	final String OuterTypeValue = "outer";
 	final String MetadataKey = "_metadata";
-	
-	@Override
-	public String[] getIdsByProcessor(String processor) {
-		BasicDBObject searchQuery = new BasicDBObject();
-        searchQuery.put(ProcessorKey, processor);
-        DBCursor cursor = this.dbCollection.find(searchQuery);
-        List<String> ids = new ArrayList<String>();
-        while(cursor.hasNext()) {
-        	ObjectId id = (ObjectId)cursor.next().get(IdKey);
-        	ids.add(id.toString());
-        }
-        String[] ids_str = new String[ids.size()];
-        return ids.toArray(ids_str);
-	}
 
 	@Override
-	public Boolean isExists(String id) {
-        if(getObjectById(id) != null)
-        	return true;
-        else
-        	return false;
-	}
-
-	@Override
-	public String createInnerObject() {
+	public LanInnerObject createInnerObject() throws IdNotExistException {
 		DBObject innerObject = new BasicDBObject();
 		innerObject.put(TypeKey, InnerTypeValue);
 		innerObject.put(ProcessorKey, "");
 		dbCollection.insert(innerObject);
-		return innerObject.get(IdKey).toString();
+		return (LanInnerObject)this.get(innerObject.get(IdKey).toString());
 	}
 
 	@Override
-	public String createOuterObject() {
+	public LanOuterObject createOuterObject() throws IdNotExistException {
 		DBObject outerObject = new BasicDBObject();
 		outerObject.put(TypeKey, OuterTypeValue);
 		outerObject.put(ProcessorKey, "");
 		outerObject.put(MetadataKey, "");
 		dbCollection.insert(outerObject);
-		return outerObject.get(IdKey).toString();
+		return (LanOuterObject)this.get(outerObject.get(IdKey).toString());
 	}
 	
 	private DBObject getObjectById(String id) {
@@ -136,69 +214,62 @@ public class MongodbLanObjectProvider implements LanObjectProvider {
 		
 		return dbobj;
 	}
-
-	@Override
-	public String[] getInnerObjectAttributeKeys(String id) throws IdNotExistException {
-		DBObject dbobj = checkAndGetObject(id);
-		
-		Set<String> keys = dbobj.keySet();
-		keys.remove(IdKey);
-		keys.remove(TypeKey);
-		keys.remove(ProcessorKey);
-		
-		String[] key_strs = new String[keys.size()];
-		return keys.toArray(key_strs);
-	}
-
-	@Override
-	public String getInnerObjectAttribute(String id, String key) throws IdNotExistException {
-		DBObject dbobj = checkAndGetObject(id);
-		return (String)dbobj.get(key);
-	}
-
-	@Override
-	public String getOuterObjectMetadata(String id) throws IdNotExistException {
-		DBObject dbobj = checkAndGetObject(id);
-		return (String)dbobj.get(MetadataKey);
-	}
-
-	@Override
-	public String getObjectProcessor(String id) throws IdNotExistException {
-		DBObject dbobj = checkAndGetObject(id);
-		return (String)dbobj.get(ProcessorKey);
-	}
 	
-	private void setAttribute(String id, String key, String value) {
+	private void setAttribute(String id, String key, Object value) {
 		this.dbCollection.update(new BasicDBObject(IdKey, new ObjectId(id)), new BasicDBObject("$set", new BasicDBObject(key, value)));
 	}
-
-	@Override
-	public void setObjectProcessor(String id, String processor) throws IdNotExistException {
-		// TODO Auto-generated method stub
-		setAttribute(id, ProcessorKey, processor);
-	}
-
-	@Override
-	public Boolean isInnerObject(String id) throws IdNotExistException {
-		// TODO Auto-generated method stub
+	
+	private Object getAttribute(String id, String key) throws IdNotExistException {
 		DBObject dbobj = checkAndGetObject(id);
-		
+		return dbobj.get(key);
+	}
+	
+	private Boolean isInnerObject(String id) throws IdNotExistException {
+		DBObject dbobj = checkAndGetObject(id);
 		String type = (String) dbobj.get(TypeKey);
-		
 		if(type.equals(InnerTypeValue))
 			return true;
-		
 		return false;
 	}
-
-	@Override
-	public void setOuterObjectMetadata(String id, String metadata) throws IdNotExistException {
-		setAttribute(id, MetadataKey, metadata);
+	
+	HashMap<String, LanObject> storedObjects;
+	private LanObject get(String id) throws IdNotExistException {
+		if(!storedObjects.containsKey(id)) {
+			LanObject obj;
+			if(isInnerObject(id)) {
+				obj = new InnerObject(id, this);
+			} else {
+				obj = new OuterObject(id, this);
+			}
+			storedObjects.put(id, obj);
+		}
+		return storedObjects.get(id);
 	}
 
 	@Override
-	public void setInnerObjectAttribute(String id, String key, String object_id) throws IdNotExistException {
-		setAttribute(id, key, object_id);
+	public Set<LanObject> all() throws IdNotExistException {
+		HashSet<LanObject> objects = new HashSet<LanObject>();
+		BasicDBObject searchQuery = new BasicDBObject();
+        DBCursor cursor = this.dbCollection.find(searchQuery);
+        while(cursor.hasNext())
+        	objects.add(this.get(cursor.next().get(IdKey).toString()));
+        return objects;
+	}
+
+	@Override
+	public LanObject findById(String id) throws IdNotExistException {
+		return this.get(id);
+	}
+
+	@Override
+	public Set<LanObject> findByProcessor(String processorName) throws IdNotExistException {
+		HashSet<LanObject> objects = new HashSet<LanObject>();
+		BasicDBObject searchQuery = new BasicDBObject();
+		searchQuery.put(ProcessorKey, processorName);
+        DBCursor cursor = this.dbCollection.find(searchQuery);
+        while(cursor.hasNext())
+        	objects.add(this.get(cursor.next().get(IdKey).toString()));
+        return objects;
 	}
 	
 }
