@@ -1,6 +1,6 @@
 package lan.struct;
 
-public abstract class LanWorldSubstance implements ILanWorldSubstance{
+public abstract class LanWorldSubstance{
 	public LanWorldSubstance(LanWorld owner) {
 		this.owner = owner;
 	}

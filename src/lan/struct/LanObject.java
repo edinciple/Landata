@@ -1,29 +1,38 @@
 package lan.struct;
 
 import lan.exceptions.IdNotExistException;
+import lan.helper.MongodbHelper;
+import lan.helper.MongodbStrings;
 
-public abstract class LanObject implements ILanWorldSubstance {
+public abstract class LanObject extends LanWorldSubstance {
+	String id;
 	
-	public abstract String getId();
-	
-	public LanWorld getOwner() {
-		return this.getProvider().getOwner();
+	public LanObject(String id, LanWorld owner) {
+		super(owner);
+		this.id = id;
 	}
-	
-	public abstract LanObjectProvider getProvider();
+
+	public String getId() {
+		return this.id;
+	}
 	
 	public LanObjectProcessor getProcessor() throws IdNotExistException {
 		return this.getOwner().getProcessor(this.getProcessorName());
 	}
 
-	public abstract String getProcessorName() throws IdNotExistException;
-	
-	public abstract void setProcessorName(String name);
+	public String getProcessorName() throws IdNotExistException {
+		return MongodbHelper.getAttribute(this.getOwner().getObjectDbCollection(), this.getId(), MongodbStrings.ProcessorKey).toString();
+	}
+
+	public void setProcessorName(String name) {
+		MongodbHelper.setAttribute(this.getOwner().getObjectDbCollection(), this.getId(), MongodbStrings.ProcessorKey, name);
+		
+	}
 	
 	public Boolean Equal(Object obj) {
 		if(obj instanceof LanObject && 
 				((LanObject)obj).getId() == this.getId() &&
-				((LanObject)obj).getProvider() == this.getProvider())
+				((LanObject)obj).getOwner() == this.getOwner())
 			return true;
 		
 		return false;
