@@ -16,6 +16,10 @@ public abstract class LanObject extends LanWorldSubstance {
 		return this.id;
 	}
 	
+	public void setProcessor(LanObjectProcessor processor) {
+		setProcessorName(this.getOwner().getProcessorName(processor));
+	}
+	
 	public LanObjectProcessor getProcessor() throws IdNotExistException {
 		return this.getOwner().getProcessor(this.getProcessorName());
 	}
@@ -27,6 +31,10 @@ public abstract class LanObject extends LanWorldSubstance {
 	public void setProcessorName(String name) {
 		MongodbHelper.setAttribute(this.getOwner().getObjectDbCollection(), this.getId(), MongodbStrings.ProcessorKey, name);
 		
+	}
+	
+	public Object getRealObject() throws Exception{
+		return this.getProcessor().getRealObject(this);
 	}
 	
 	public Boolean Equal(Object obj) {

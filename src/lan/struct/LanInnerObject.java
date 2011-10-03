@@ -36,7 +36,7 @@ public class LanInnerObject extends LanObject {
 		MongodbHelper.setAttribute(this.getOwner().getObjectDbCollection(), this.getId(), key, new ObjectId(value.getId()));
 	}
 	
-	public Object getRealObject() throws IdNotExistException{
+	public Object getRealObject() throws Exception{
 		return this.getProcessor().getRealObject(this);
 	}
 }

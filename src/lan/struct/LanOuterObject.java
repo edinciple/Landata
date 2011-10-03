@@ -17,8 +17,5 @@ public class LanOuterObject extends LanObject {
 		MongodbHelper.setAttribute(this.getOwner().getObjectDbCollection(), this.getId(), MongodbStrings.MetadataKey, metadata);
 		
 	}
-	
-	public Object getRealObject() throws IdNotExistException{
-		return this.getProcessor().getRealObject(this);
-	}
+
 }
